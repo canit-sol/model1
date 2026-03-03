@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Cesium Split Comparison</title>
+
+<!-- Cesium Library -->
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  background: black;
+  font-family: sans-serif;
+}
+
+/* Containers */
+#masterContainer,
+#slaveContainer {
+  width: 50%;
+  height: 100vh;
+  position: relative;
+}
+
+/* OLD / NEW Labels */
+.label {
+  position: absolute;
+  top: 15px;
+  left: 20px;
+  z-index: 10;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  background: rgba(0,0,0,0.6);
+  padding: 6px 14px;
+  border-radius: 6px;
+}
+
+/* Dropdown Toggle (right side of LEFT screen) */
+#modelSelector {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  z-index: 10;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 14px;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+/* Hide Cesium credits */
+.cesium-widget-credits {
+  display: none !important;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LEFT SIDE (OLD) -->
+<div id="masterContainer">
+  <div class="label">OLD</div>
+
+  <select id="modelSelector">
+    <option value="4458928">Nov 2025</option>
+    <option value="4458928">Dec 2025</option>
+  </select>
+</div>
+
+<!-- RIGHT SIDE (NEW) -->
+<div id="slaveContainer">
+  <div class="label">NEW</div>
+</div>
+
+<script type="module">
+
+// 🔐 Replace with restricted token before hosting publicly
+Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkZDVkZWIxMS0xZmI2LTQwMTEtODU0OS03MmViODc3YmE1ZmQiLCJpZCI6MzkxNjExLCJpYXQiOjE3NzE0MDk5MTh9.CbV7-X9bTD77ocxFH_iUDGVNja4Ju3JYxpFOcQv1AdE";
+
+// Create viewers
+const masterViewer = new Cesium.Viewer("masterContainer", {
+  animation: false,
+  timeline: false,
+  baseLayerPicker: false,
+  geocoder: false,
+  homeButton: false,
+  sceneModePicker: false,
+  navigationHelpButton: false,
+  fullscreenButton: false,
+  infoBox: false,
+  selectionIndicator: false
+});
+
+const slaveViewer = new Cesium.Viewer("slaveContainer", {
+  animation: false,
+  timeline: false,
+  baseLayerPicker: false,
+  geocoder: false,
+  homeButton: false,
+  sceneModePicker: false,
+  navigationHelpButton: false,
+  fullscreenButton: false,
+  infoBox: false,
+  selectionIndicator: false
+});
+
+// Lock slave controls
+slaveViewer.scene.screenSpaceCameraController.enableRotate = false;
+slaveViewer.scene.screenSpaceCameraController.enableZoom = false;
+slaveViewer.scene.screenSpaceCameraController.enableTranslate = false;
+slaveViewer.scene.screenSpaceCameraController.enableTilt = false;
+
+let masterTileset;
+let slaveTileset;
+
+// Initial load
+async function loadInitialModels() {
+
+  masterTileset = await Cesium.Cesium3DTileset.fromIonAssetId(4458928);
+  slaveTileset  = await Cesium.Cesium3DTileset.fromIonAssetId(4458928);
+
+  masterViewer.scene.primitives.add(masterTileset);
+  slaveViewer.scene.primitives.add(slaveTileset);
+
+  await masterViewer.zoomTo(masterTileset);
+  await slaveViewer.zoomTo(slaveTileset);
+}
+
+loadInitialModels();
+
+// Master → Slave sync
+masterViewer.camera.changed.addEventListener(function () {
+  slaveViewer.camera.setView({
+    destination: masterViewer.camera.positionWC,
+    orientation: {
+      heading: masterViewer.camera.heading,
+      pitch: masterViewer.camera.pitch,
+      roll: masterViewer.camera.roll
+    }
+  });
+});
+
+// Toggle only LEFT (OLD) model
+document.getElementById("modelSelector").addEventListener("change", async function() {
+
+  const selectedAssetId = parseInt(this.value);
+
+  masterViewer.scene.primitives.remove(masterTileset);
+
+  masterTileset = await Cesium.Cesium3DTileset.fromIonAssetId(selectedAssetId);
+  masterViewer.scene.primitives.add(masterTileset);
+
+  await masterViewer.zoomTo(masterTileset);
+
+});
+
+</script>
+
+</body>
+</html>
