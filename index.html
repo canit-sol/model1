@@ -60,10 +60,23 @@ html, body {
 .cesium-widget-credits {
   display: none !important;
 }
+#resetView{
+  position:absolute;
+  top:110px;
+  left:20px;
+  z-index:10;
+  padding:8px 14px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.4);
+  background:rgba(0,0,0,0.6);
+  color:white;
+  cursor:pointer;
+}
 </style>
 </head>
 
 <body>
+<button id="resetView">Reset View</button>
 
 <!-- LEFT SIDE (OLD) -->
 <div id="masterContainer">
@@ -114,6 +127,17 @@ const slaveViewer = new Cesium.Viewer("slaveContainer", {
 // IMPORTANT: disable globe so no sky zoom
 masterViewer.scene.globe.show = false;
 slaveViewer.scene.globe.show = false;
+
+document.getElementById("resetView").addEventListener("click", async function(){
+
+//Reset view button changes
+  await masterViewer.zoomTo(masterTileset);
+  await slaveViewer.zoomTo(slaveTileset);
+  const controller = masterViewer.scene.screenSpaceCameraController;
+  controller.enableTilt = true;
+  controller.minimumZoomDistance = 40;
+  controller.maximumZoomDistance = 3300;
+});
 
 // Disable tilt (no going under model)
 masterViewer.scene.screenSpaceCameraController.enableTilt = false;
@@ -181,7 +205,6 @@ document.getElementById("modelSelector").addEventListener("change", async functi
 
   await masterViewer.zoomTo(masterTileset);
 });
-
 </script>
 
 </body>
