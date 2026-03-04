@@ -43,8 +43,8 @@ html, body {
 /* Dropdown Toggle (right side of LEFT screen) */
 #modelSelector {
   position: absolute;
-  top: 15px;
-  right: 20px;
+  top: 60px;
+  left: 20px;
   z-index: 10;
   padding: 8px 14px;
   border-radius: 8px;
@@ -82,10 +82,9 @@ html, body {
 
 <script type="module">
 
-// 🔐 Replace with restricted token before hosting publicly
 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkZDVkZWIxMS0xZmI2LTQwMTEtODU0OS03MmViODc3YmE1ZmQiLCJpZCI6MzkxNjExLCJpYXQiOjE3NzE0MDk5MTh9.CbV7-X9bTD77ocxFH_iUDGVNja4Ju3JYxpFOcQv1AdE";
 
-// Create viewers
+// CREATE VIEWERS
 const masterViewer = new Cesium.Viewer("masterContainer", {
   animation: false,
   timeline: false,
@@ -112,16 +111,25 @@ const slaveViewer = new Cesium.Viewer("slaveContainer", {
   selectionIndicator: false
 });
 
-// Lock slave controls
-slaveViewer.scene.screenSpaceCameraController.enableRotate = false;
-slaveViewer.scene.screenSpaceCameraController.enableZoom = false;
-slaveViewer.scene.screenSpaceCameraController.enableTranslate = false;
-slaveViewer.scene.screenSpaceCameraController.enableTilt = false;
+// IMPORTANT: disable globe so no sky zoom
+masterViewer.scene.globe.show = false;
+slaveViewer.scene.globe.show = false;
 
+// Disable tilt (no going under model)
+masterViewer.scene.screenSpaceCameraController.enableTilt = false;
+
+// Lock slave controls
 let masterTileset;
 let slaveTileset;
+const slaveController = slaveViewer.scene.screenSpaceCameraController;
 
-// Initial load
+slaveController.enableRotate = false;
+slaveController.enableZoom = false;
+slaveController.enableTranslate = false;
+slaveController.enableTilt = true;
+slaveController.enableLook = false;
+
+// LOAD MODELS
 async function loadInitialModels() {
 
   masterTileset = await Cesium.Cesium3DTileset.fromIonAssetId(4458928);
@@ -132,14 +140,25 @@ async function loadInitialModels() {
 
   await masterViewer.zoomTo(masterTileset);
   await slaveViewer.zoomTo(slaveTileset);
+
+// SIMPLE ZOOM LIMIT (after zoom)
+const controller = masterViewer.scene.screenSpaceCameraController;
+controller.enableTilt = true;  // don't go under model
+controller.minimumZoomDistance = 50;   // stop too close
+controller.maximumZoomDistance = 1300;  // stop too far
 }
+slaveViewer.scene.screenSpaceCameraController.enableInputs = false;
+masterViewer.scene.screenSpaceCameraController.zoomEventTypes = [
+    Cesium.CameraEventType.WHEEL
+];
+masterViewer.scene.screenSpaceCameraController.zoomFactor = 4;
 
 loadInitialModels();
 
-// Master → Slave sync
+// SYNC MASTER → SLAVE
 masterViewer.camera.changed.addEventListener(function () {
   slaveViewer.camera.setView({
-    destination: masterViewer.camera.positionWC,
+    destination: masterViewer.camera.position,
     orientation: {
       heading: masterViewer.camera.heading,
       pitch: masterViewer.camera.pitch,
@@ -147,8 +166,10 @@ masterViewer.camera.changed.addEventListener(function () {
     }
   });
 });
+const controller = masterViewer.scene.screenSpaceCameraController;
+controller.enableTilt = false;
 
-// Toggle only LEFT (OLD) model
+// DROPDOWN SWITCH
 document.getElementById("modelSelector").addEventListener("change", async function() {
 
   const selectedAssetId = parseInt(this.value);
@@ -159,7 +180,6 @@ document.getElementById("modelSelector").addEventListener("change", async functi
   masterViewer.scene.primitives.add(masterTileset);
 
   await masterViewer.zoomTo(masterTileset);
-
 });
 
 </script>
