@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,28 +10,55 @@
 
 <style>
 
+/* PAGE */
+
 html,body{
 margin:0;
 padding:0;
 overflow:hidden;
-display:flex;
 background:black;
 font-family:sans-serif;
+height:100%;
 }
 
-/* containers */
+/* LEFT VIEW */
 
-#masterContainer,
-#slaveContainer{
-width:50%;
+#masterContainer{
+position:absolute;
+left:0;
+top:0;
+width:50vw;
 height:100vh;
-position:relative;
 }
 
-/* hide cesium credit */
+/* RIGHT VIEW */
+
+#slaveContainer{
+position:absolute;
+left:50vw;
+top:0;
+width:50vw;
+height:100vh;
+}
+
+/* hide cesium credits */
 
 .cesium-widget-credits{
 display:none!important;
+}
+
+/* CENTER SPLIT LINE */
+
+.split-line{
+position:absolute;
+top:0;
+left:50vw;
+width:2px;
+height:100vh;
+background:#ff7a00;
+box-shadow:0 0 6px #ff7a00;
+z-index:100;
+pointer-events:none;
 }
 
 /* HOME BUTTON */
@@ -57,31 +85,27 @@ background:rgba(0,0,0,0.9);
 
 /* OLD / NEW LABELS */
 
-.old-label{
+.view-label{
 position:absolute;
-bottom:15px;
-left:15px;
-background:rgba(0,0,0,0.7);
+bottom:18px;
+left:50%;
+transform:translateX(-50%);
+z-index:25;
+
+font-size:12px;
+letter-spacing:2px;
+font-weight:600;
+
 color:white;
-padding:6px 12px;
-border-radius:6px;
-font-size:14px;
-z-index:20;
+background:rgba(0,0,0,0.35);
+backdrop-filter:blur(4px);
+
+padding:4px 12px;
+border-radius:20px;
+pointer-events:none;
 }
 
-.new-label{
-position:absolute;
-bottom:15px;
-right:15px;
-background:rgba(0,0,0,0.7);
-color:white;
-padding:6px 12px;
-border-radius:6px;
-font-size:14px;
-z-index:20;
-}
-
-/* PANEL */
+/* SIDE PANEL */
 
 .panel{
 position:absolute;
@@ -144,10 +168,13 @@ font-size:13px;
 
 <body>
 
-<!-- LEFT SIDE (FOLLOWER) -->
+<div class="split-line"></div>
+
+<!-- LEFT VIEW -->
+
 <div id="masterContainer">
 
-<div class="old-label">OLD</div>
+<div class="view-label">OLD</div>
 
 <div class="panel" id="controlPanel">
 
@@ -166,8 +193,8 @@ Go 1 and 2 Housing (Tower A)
 
 </div>
 
+<!-- RIGHT VIEW -->
 
-<!-- RIGHT SIDE (MASTER / CONTROL) -->
 <div id="slaveContainer">
 
 <div class="home-btn" onclick="location.reload()">
@@ -176,7 +203,7 @@ Go 1 and 2 Housing (Tower A)
 </svg>
 </div>
 
-<div class="new-label">NEW</div>
+<div class="view-label">NEW</div>
 
 </div>
 
@@ -186,7 +213,7 @@ Cesium.Ion.defaultAccessToken="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJk
 
 /* VIEWERS */
 
-const masterViewer=new Cesium.Viewer("masterContainer",{
+const leftViewer = new Cesium.Viewer("masterContainer",{
 animation:false,
 timeline:false,
 baseLayerPicker:false,
@@ -199,7 +226,7 @@ infoBox:false,
 selectionIndicator:false
 });
 
-const slaveViewer=new Cesium.Viewer("slaveContainer",{
+const rightViewer = new Cesium.Viewer("slaveContainer",{
 animation:false,
 timeline:false,
 baseLayerPicker:false,
@@ -212,101 +239,111 @@ infoBox:false,
 selectionIndicator:false
 });
 
-masterViewer.scene.globe.show=true;
-slaveViewer.scene.globe.show=true;
+let leftTileset;
+let rightTileset;
 
-
-/* DISABLE LEFT CONTROLS */
-
-const masterController = masterViewer.scene.screenSpaceCameraController;
-
-masterController.enableRotate=false;
-masterController.enableZoom=false;
-masterController.enableTranslate=false;
-masterController.enableLook=false;
-
-masterViewer.scene.screenSpaceCameraController.enableInputs=false;
-
-
-/* TILES */
-
-let masterTileset;
-let slaveTileset;
+/* LOAD MODELS */
 
 async function loadInitialModels(){
 
-masterTileset=await Cesium.Cesium3DTileset.fromIonAssetId(4458928);
-slaveTileset=await Cesium.Cesium3DTileset.fromIonAssetId(4458928);
+leftTileset = await Cesium.Cesium3DTileset.fromIonAssetId(4458928);
+rightTileset = await Cesium.Cesium3DTileset.fromIonAssetId(4458928);
 
-masterViewer.scene.primitives.add(masterTileset);
-slaveViewer.scene.primitives.add(slaveTileset);
+leftViewer.scene.primitives.add(leftTileset);
+rightViewer.scene.primitives.add(rightTileset);
 
-await slaveViewer.zoomTo(slaveTileset);
-await masterViewer.zoomTo(masterTileset);
+await leftViewer.zoomTo(leftTileset);
+await rightViewer.zoomTo(rightTileset);
 
+/* CAMERA LIMITS */
 
-/* ZOOM LIMITS (RIGHT SIDE MASTER) */
+const leftController = leftViewer.scene.screenSpaceCameraController;
+const rightController = rightViewer.scene.screenSpaceCameraController;
 
-const controller = slaveViewer.scene.screenSpaceCameraController;
+leftController.enableTilt = true;
+rightController.enableTilt = true;
 
-controller.enableTilt = true;
-controller.minimumZoomDistance = 50;
-controller.maximumZoomDistance = 1300;
+leftController.minimumZoomDistance = 60;
+rightController.minimumZoomDistance = 60;
 
-slaveViewer.scene.screenSpaceCameraController.zoomEventTypes = [
-Cesium.CameraEventType.WHEEL
-];
+leftController.maximumZoomDistance = 2500;
+rightController.maximumZoomDistance = 2500;
 
-slaveViewer.scene.screenSpaceCameraController.zoomFactor = 4;
+leftController.zoomEventTypes = [Cesium.CameraEventType.WHEEL];
+rightController.zoomEventTypes = [Cesium.CameraEventType.WHEEL];
+
+leftController.zoomFactor = 4;
+rightController.zoomFactor = 4;
 
 }
 
 loadInitialModels();
 
+/* CAMERA SYNC */
 
-/* CAMERA SYNC (RIGHT → LEFT) */
+let syncing=false;
 
-slaveViewer.camera.changed.addEventListener(function(){
+leftViewer.scene.postRender.addEventListener(function(){
 
-masterViewer.camera.setView({
-destination:slaveViewer.camera.position,
+if(syncing) return;
+syncing=true;
+
+rightViewer.camera.setView({
+destination:leftViewer.camera.position,
 orientation:{
-heading:slaveViewer.camera.heading,
-pitch:slaveViewer.camera.pitch,
-roll:slaveViewer.camera.roll
+heading:leftViewer.camera.heading,
+pitch:leftViewer.camera.pitch,
+roll:leftViewer.camera.roll
 }
 });
 
+syncing=false;
+
 });
 
+rightViewer.scene.postRender.addEventListener(function(){
+
+if(syncing) return;
+syncing=true;
+
+leftViewer.camera.setView({
+destination:rightViewer.camera.position,
+orientation:{
+heading:rightViewer.camera.heading,
+pitch:rightViewer.camera.pitch,
+roll:rightViewer.camera.roll
+}
+});
+
+syncing=false;
+
+});
 
 /* DROPDOWN SWITCH */
 
 document.getElementById("modelSelector").addEventListener("change",async function(){
 
-const selectedAssetId=parseInt(this.value);
+const id=parseInt(this.value);
 
-masterViewer.scene.primitives.remove(masterTileset);
+leftViewer.scene.primitives.remove(leftTileset);
 
-masterTileset=await Cesium.Cesium3DTileset.fromIonAssetId(selectedAssetId);
+leftTileset=await Cesium.Cesium3DTileset.fromIonAssetId(id);
 
-masterViewer.scene.primitives.add(masterTileset);
+leftViewer.scene.primitives.add(leftTileset);
 
-await masterViewer.zoomTo(masterTileset);
+await leftViewer.zoomTo(leftTileset);
 
 });
-
 
 /* PANEL TOGGLE */
 
 const toggle=document.getElementById("panelToggle");
 const panel=document.getElementById("controlPanel");
 
-toggle.onclick=()=>{
-panel.classList.toggle("collapsed");
-};
+toggle.onclick=()=>panel.classList.toggle("collapsed");
 
 </script>
 
 </body>
 </html>
+```
